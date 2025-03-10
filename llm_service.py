@@ -1,16 +1,13 @@
 import aiohttp
 from openai import OpenAI
 
-# DeepSeek API配置
-DEEPSEEK_API_KEY = "sk-addfdeaef8d84d47b4d1b39119fd8125"
-DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+from config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, SYSTEM_PROMPT ,KOOK_API_URL, BOT_TOKEN
 
-# KOOK API配置
-KOOK_API_URL = "https://www.kookapp.cn/api/v3"
-KOOK_BOT_TOKEN = "1/MTkxNTY=/t8eHtHi6XIkI5X79rP7H0w=="
 
 # 初始化DeepSeek客户端
 deepseek_client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
+
+KOOK_BOT_TOKEN = BOT_TOKEN
 
 async def call_deepseek_api(user_message):
     """调用DeepSeek API获取回复"""
@@ -18,7 +15,7 @@ async def call_deepseek_api(user_message):
         response = deepseek_client.chat.completions.create(
             model="deepseek-chat",
             messages=[
-                {"role": "system", "content": "你是一个助手，可以帮助用户查询游戏、音乐等信息。请你自行判断用户是否需要你调用工具。"},
+                {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_message},
             ],
             stream=False
@@ -67,6 +64,20 @@ async def delete_game_activity():
                 print(f"删除游戏活动记录失败: {response.status}")
                 return False
 
+async def get_active_game_players():
+    """查询当前正在玩游戏的用户"""
+    # 假设KOOK API提供了查询当前活动状态的接口
+    url = f"{KOOK_API_URL}/game/active-players"
+    headers = {"Authorization": f"Bot {KOOK_BOT_TOKEN}"}
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers) as response:
+            if response.status == 200:
+                data = await response.json()
+                return data.get("data", {}).get("players", [])
+            else:
+                print(f"查询当前玩游戏用户失败: {response.status}")
+                return []
+
 async def handle_user_query(user_message):
     """处理用户查询"""
     # 调用DeepSeek API获取初始回复
@@ -92,4 +103,11 @@ async def handle_user_query(user_message):
     elif "结束玩游戏" in user_message:
         success = await delete_game_activity()
         reply = "已结束当前游戏。" if success else "结束游戏失败。"
+    elif "是否有用户正在玩游戏" in user_message:
+        active_players = await get_active_game_players()
+        if active_players:
+            player_names = [player["username"] for player in active_players]
+            reply = f"当前正在玩游戏的用户有：\n" + "\n".join(player_names)
+        else:
+            reply = "当前没有用户正在玩游戏。"
     return reply
