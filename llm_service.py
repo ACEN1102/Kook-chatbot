@@ -35,30 +35,19 @@ TOOLS = [
     {
         "type": "function",
         "function": {
-            "name": "get_user_game_activity",
-            "description": "查询用户正在玩的游戏。",
+            "name": "get_online_users",
+            "description": "查询当前在线的用户列表。",
             "parameters": {
                 "type": "object",
                 "properties": {
                 },
-                "required": ["user_id"]
             }
         }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_guild_id_by_name",
-            "description": "根据服务器名称获取服务器 ID。",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    }
-                },
-                "required": ["guild_name"]
-            }
-        }
+    }
+
 ]
+
+
 
 async def call_deepseek_api(user_message):
     """调用DeepSeek API，支持Function Calling"""
@@ -89,6 +78,12 @@ async def get_game_list():
             else:
                 print(f"获取游戏列表失败: {response.status}")
                 return []
+
+async def get_online_users(guild_id):
+    """查询当前在线的用户列表"""
+    users = await get_guild_user_list(guild_id)
+    online_users = [user for user in users if user.get("online")]
+    return online_users
 
 async def get_guild_user_list(guild_id):
     """获取服务器中的用户列表"""
@@ -211,6 +206,18 @@ async def handle_user_query(user_message, event_data):
                 return f"服务器中的用户列表如下：\n" + "\n".join(user_names)
             else:
                 return "获取服务器用户列表失败，请稍后再试。"
+        elif tool_name == "get_online_users":
+            # 从 event_data 的 extra 中获取 guild_id
+            guild_id = event_data.get("extra", {}).get("guild_id")
+            if not guild_id:
+                return "要查询当前在线的用户列表，我需要知道服务器的名称或ID。请提供服务器的名称或ID。"
+
+            result = await get_online_users(guild_id)
+            if result:
+                user_names = [user["username"] for user in result]
+                return f"当前在线的用户列表如下：\n" + "\n".join(user_names)
+            else:
+                return "查询在线用户列表失败，请稍后再试。"
         elif tool_name == "get_user_game_activity":
             # 直接从事件数据中获取 user_id
             user_id = event_data.get("author_id")
