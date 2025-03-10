@@ -109,6 +109,7 @@ async def handle_event(data):
 
     # 解析事件数据
     event_data = data['d']
+    print(f"收到事件: {event_data}")
     channel_type = event_data.get('channel_type')
     event_type = event_data.get('type')
     target_id = event_data.get('target_id')
@@ -159,7 +160,7 @@ async def handle_user_message(event_data):
         print(f"收到文字消息: {content} (频道: {target_id}, 发送者: {author_id})")
         if f"(met){BOT_USER_ID}(met)" in content:  # 判断是否@了机器人
             user_message = content.replace(f"(met){BOT_USER_ID}(met)", "").strip()
-            reply = await handle_user_query(user_message)  # 调用llm_service处理用户查询
+            reply = await handle_user_query(user_message,event_data)  # 传递 event_data
             await send_message(target_id, f"(met){author_id}(met) {reply}")  # @用户并回复
     elif event_type == 2:  # 图片消息
         print(f"收到图片消息: {content} (频道: {target_id}, 发送者: {author_id})")
@@ -173,7 +174,7 @@ async def handle_user_message(event_data):
         print(f"收到KMarkdown消息: {content} (频道: {target_id}, 发送者: {author_id})")
         if f"(met){BOT_USER_ID}(met)" in content:  # 判断是否@了机器人
             user_message = content.replace(f"(met){BOT_USER_ID}(met)", "").strip()
-            reply = await handle_user_query(user_message)  # 调用llm_service处理用户查询
+            reply = await handle_user_query(user_message, event_data)  # 传递 event_data
             await send_message(target_id, f"(met){author_id}(met) {reply}")  # @用户并回复
     elif event_type == 10:  # Card 消息
         print(f"收到Card消息: {content} (频道: {target_id}, 发送者: {author_id})")
